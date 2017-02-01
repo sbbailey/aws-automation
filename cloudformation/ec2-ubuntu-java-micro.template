@@ -1,0 +1,103 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "EC2 micro server with java 8 and new security group on Ubuntu 16.04 64 bit",
+	"Parameters": {
+   		"InstanceNameTag": {
+    		"Description": "Instance name",
+      		"Type": "String"
+      	},
+   		"InstanceTypeParam": {
+			"Description": "EC2 Instance Type (defaults to t2.micro)",
+      		"Type": "String",
+        	"Default": "t2.micro",
+         	"AllowedValues": ["t2.micro", "t2.small", "t2.medium", "m1.small", "m1.medium", "m1.large"]
+    	},
+     	"KeyPairName": {
+        	"Description": "Name of the EC2 key pair to enable the ssh access to the instance",
+         	"Type": "AWS::EC2::KeyPair::KeyName"
+      	},
+		"SSHLocation": {
+			"Description": "The IP address range that can used to access this instance",
+			"Type": "String",
+			"MinLength": 9,
+			"MaxLength": 18
+		},
+		"IamProfileName": {
+			"Description": "IAM Profile name",
+			"Type": "String"
+		}
+	},
+ 	"Resources": {
+   		"EC2Java8Ubuntu": {
+       		"Type": "AWS::EC2::Instance",         	
+         	"Properties": {
+            	"IamInstanceProfile": {
+					"Ref": "IamProfileName"
+				},
+             	"ImageId": "ami-6f587e1c",
+               	"InstanceType": {
+                	"Ref": "InstanceTypeParam"
+               	},
+				"SecurityGroups": [
+					{
+						"Ref": "InstanceSecurityGroup"
+					}
+				],
+                "KeyName": {
+                  	"Ref": "KeyPairName"
+                },
+                "Tags": [ 
+                	{	"Key": "Name",
+                   		"Value": {
+                   			"Ref": "InstanceNameTag"
+                   		}
+                   	}
+                ],
+                 "UserData": {
+                  	"Fn::Base64": {
+                     	"Fn::Join": [
+                      		"\n",
+                        	[
+                           		"#!/bin/bash -x",                                     					        						
+                             	"# update the server",
+                              	"sudo DEBIAN_FRONTEND=noninteractive apt-get -y update",
+        						"# install automatic updates",
+              					"sudo apt-get -y install unattended-upgrades",
+								"# install java",
+								"sudo apt-get -y install openjdk-8-jdk",
+								"# install unzip",
+								"sudo apt-get -y install unzip"
+        					]
+             			]
+             		}
+				}
+          	}
+     	},
+		"InstanceSecurityGroup": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription" : "EC2 Java 8 Ubuntu SG",
+				"SecurityGroupIngress": [
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": {
+							"Ref": "SSHLocation"
+						}
+					}
+				]
+			}
+		}
+	},
+ 	"Outputs" : {
+		"InstancePublicDNS" : {
+    		"Description": "Public DNS Address",  
+    		"Value" : { "Fn::GetAtt" : [ "EC2Java8Ubuntu", "PublicDnsName" ] }
+  		},
+		"InstanceId": {
+			"Description": "Instance Id",
+			"Value" : { "Ref" : "EC2Java8Ubuntu" }
+		}
+	}
+}
